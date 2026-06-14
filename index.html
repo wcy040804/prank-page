@@ -106,6 +106,36 @@ body{
   0%,100%{transform:scale(1);box-shadow:0 0 100px rgba(255,255,255,.6),0 0 200px rgba(123,104,238,.3)}
   50%{transform:scale(1.03);box-shadow:0 0 130px rgba(255,255,255,.8),0 0 250px rgba(123,104,238,.4)}
 }
+#orb.darkmatter{
+  background:radial-gradient(circle at 35% 35%,#a066ff,#4A0080 40%,#000 80%);
+  box-shadow:0 0 80px rgba(74,0,128,.5),0 0 160px rgba(74,0,128,.2);
+  animation:pulse-darkmatter 3s ease-in-out infinite;
+}
+@keyframes pulse-darkmatter{
+  0%,100%{transform:scale(1);box-shadow:0 0 80px rgba(74,0,128,.5),0 0 160px rgba(74,0,128,.2)}
+  50%{transform:scale(1.04);box-shadow:0 0 110px rgba(74,0,128,.7),0 0 200px rgba(74,0,128,.35)}
+}
+#orb.pulsar{
+  background:radial-gradient(circle at 35% 35%,#fff,#00BFFF 30%,#1E90FF 60%,#000 85%);
+  box-shadow:0 0 100px rgba(0,191,255,.5),0 0 200px rgba(30,144,255,.25);
+  animation:pulse-pulsar 0.6s ease-in-out infinite;
+}
+@keyframes pulse-pulsar{
+  0%,100%{transform:scale(1);box-shadow:0 0 100px rgba(0,191,255,.5),0 0 200px rgba(30,144,255,.25)}
+  25%{transform:scale(1.08);box-shadow:0 0 140px rgba(0,191,255,.8),0 0 260px rgba(30,144,255,.4)}
+  50%{transform:scale(1.02);box-shadow:0 0 90px rgba(0,191,255,.4),0 0 180px rgba(30,144,255,.2)}
+  75%{transform:scale(1.06);box-shadow:0 0 120px rgba(0,191,255,.6),0 0 220px rgba(30,144,255,.3)}
+}
+#orb.ultimatesingularity{
+  background:radial-gradient(circle at 35% 35%,#fff,#FFFAFA 20%,#FFD700 45%,#FF8C00 65%,#000 85%);
+  box-shadow:0 0 120px rgba(255,255,255,.7),0 0 240px rgba(255,215,0,.4),0 0 360px rgba(255,140,0,.15);
+  animation:pulse-ultimate 1s ease-in-out infinite;
+}
+@keyframes pulse-ultimate{
+  0%,100%{transform:scale(1);box-shadow:0 0 120px rgba(255,255,255,.7),0 0 240px rgba(255,215,0,.4),0 0 360px rgba(255,140,0,.15)}
+  33%{transform:scale(1.06);box-shadow:0 0 160px rgba(255,255,255,.9),0 0 300px rgba(255,215,0,.6),0 0 440px rgba(255,140,0,.25)}
+  66%{transform:scale(0.97);box-shadow:0 0 100px rgba(255,255,255,.5),0 0 200px rgba(255,215,0,.3),0 0 300px rgba(255,140,0,.1)}
+}
 #click-zone .label{
   position:absolute;bottom:12%;left:50%;transform:translateX(-50%);
   font-size:13px;color:rgba(255,255,255,.3);letter-spacing:3px;
@@ -190,6 +220,9 @@ body{
     <div class="stage-dot" data-stage="supernova"></div>
     <div class="stage-dot" data-stage="blackhole"></div>
     <div class="stage-dot" data-stage="whitehole"></div>
+    <div class="stage-dot" data-stage="darkmatter"></div>
+    <div class="stage-dot" data-stage="pulsar"></div>
+    <div class="stage-dot" data-stage="ultimatesingularity"></div>
   </div>
 
   <div id="click-zone">
@@ -215,37 +248,52 @@ body{
 // ========================================================================
 //  🧬  CONFIG
 // ========================================================================
-const STAGE_KEYS = ['singularity','star','supernova','blackhole','whitehole'];
-const STAGE_LABELS = {singularity:'奇点',star:'恒星',supernova:'超新星',blackhole:'黑洞',whitehole:'白洞'};
-const STAGE_UNLOCK = {singularity:0,star:1e3,supernova:1e5,blackhole:5e6,whitehole:1e8};
-const STAGE_CLASS = {singularity:'singularity',star:'star',supernova:'supernova',blackhole:'blackhole',whitehole:'whitehole'};
+const STAGE_KEYS = ['singularity','star','supernova','blackhole','whitehole','darkmatter','pulsar','ultimatesingularity'];
+const STAGE_LABELS = {singularity:'奇点',star:'恒星',supernova:'超新星',blackhole:'黑洞',whitehole:'白洞',darkmatter:'暗物质',pulsar:'脉冲星',ultimatesingularity:'终极奇点'};
+const STAGE_UNLOCK = {singularity:0,star:200,supernova:1e4,blackhole:2e5,whitehole:5e6,darkmatter:5e9,pulsar:1e13,ultimatesingularity:1e16};
+const STAGE_CLASS = {singularity:'singularity',star:'star',supernova:'supernova',blackhole:'blackhole',whitehole:'whitehole',darkmatter:'darkmatter',pulsar:'pulsar',ultimatesingularity:'ultimatesingularity'};
 
 const UPGRADE_DEFS = [
   // —— 奇点 ——
-  {id:'click1',stage:'singularity',name:'点击之力',desc:'每次点击 +1 能量',baseCost:10,cMult:1.15,maxLv:25,
+  {id:'click1',stage:'singularity',name:'点击之力',desc:'每次点击 +1 能量',baseCost:5,cMult:1.12,maxLv:25,
    effect:lv=>lv,unlock:()=>true,type:'click'},
-  {id:'auto1',stage:'singularity',name:'量子波动',desc:'自动 +0.2/s',baseCost:50,cMult:1.20,maxLv:25,
-   effect:lv=>lv*0.2,unlock:()=>true,type:'auto'},
+  {id:'auto1',stage:'singularity',name:'量子波动',desc:'自动 +0.5/s',baseCost:30,cMult:1.18,maxLv:30,
+   effect:lv=>lv*0.5,unlock:()=>true,type:'auto'},
   // —— 恒星 ——
-  {id:'auto2',stage:'star',name:'聚变效率',desc:'自动 +1/s',baseCost:200,cMult:1.18,maxLv:30,
-   effect:lv=>lv*1,unlock:()=>state.energy>=STAGE_UNLOCK.star,type:'auto'},
-  {id:'mult1',stage:'star',name:'恒星质量',desc:'所有产出 ×1.15',baseCost:800,cMult:1.22,maxLv:20,
-   effect:lv=>Math.pow(1.15,lv),unlock:()=>state.energy>=STAGE_UNLOCK.star,type:'mult'},
+  {id:'auto2',stage:'star',name:'聚变效率',desc:'自动 +2/s',baseCost:100,cMult:1.15,maxLv:35,
+   effect:lv=>lv*2,unlock:()=>state.energy>=STAGE_UNLOCK.star,type:'auto'},
+  {id:'mult1',stage:'star',name:'恒星质量',desc:'所有产出 ×1.12',baseCost:500,cMult:1.18,maxLv:25,
+   effect:lv=>Math.pow(1.12,lv),unlock:()=>state.energy>=STAGE_UNLOCK.star,type:'mult'},
   // —— 超新星 ——
-  {id:'burst1',stage:'supernova',name:'爆发强度',desc:'点击爆发时 ×0.5',baseCost:8000,cMult:1.20,maxLv:30,
-   effect:lv=>1+lv*0.5,unlock:()=>state.energy>=STAGE_UNLOCK.supernova,type:'burst'},
-  {id:'cd1',stage:'supernova',name:'坍缩冷却',desc:'爆发冷却 -1s',baseCost:15000,cMult:1.25,maxLv:20,
+  {id:'burst1',stage:'supernova',name:'爆发强度',desc:'点击爆发 ×0.6',baseCost:5000,cMult:1.18,maxLv:30,
+   effect:lv=>1+lv*0.6,unlock:()=>state.energy>=STAGE_UNLOCK.supernova,type:'burst'},
+  {id:'cd1',stage:'supernova',name:'坍缩冷却',desc:'爆发冷却 -1s',baseCost:10000,cMult:1.22,maxLv:25,
    effect:lv=>lv*1,unlock:()=>state.energy>=STAGE_UNLOCK.supernova,type:'cd'},
   // —— 黑洞 ——
-  {id:'convert1',stage:'blackhole',name:'吞噬效率',desc:'坍缩时多获 0.2x 精华',baseCost:80000,cMult:1.22,maxLv:25,
-   effect:lv=>1+lv*0.2,unlock:()=>state.energy>=STAGE_UNLOCK.blackhole,type:'convert'},
-  {id:'mult2',stage:'blackhole',name:'事件视界',desc:'所有产出 ×1.2',baseCost:150000,cMult:1.28,maxLv:25,
-   effect:lv=>Math.pow(1.2,lv),unlock:()=>state.energy>=STAGE_UNLOCK.blackhole,type:'mult'},
+  {id:'convert1',stage:'blackhole',name:'吞噬效率',desc:'坍缩时多获 0.25x 精华',baseCost:50000,cMult:1.20,maxLv:25,
+   effect:lv=>1+lv*0.25,unlock:()=>state.energy>=STAGE_UNLOCK.blackhole,type:'convert'},
+  {id:'mult2',stage:'blackhole',name:'事件视界',desc:'所有产出 ×1.15',baseCost:100000,cMult:1.25,maxLv:25,
+   effect:lv=>Math.pow(1.15,lv),unlock:()=>state.energy>=STAGE_UNLOCK.blackhole,type:'mult'},
   // —— 白洞 ——
-  {id:'auto3',stage:'whitehole',name:'喷射强度',desc:'自动 +10/s',baseCost:2e6,cMult:1.25,maxLv:30,
-   effect:lv=>lv*10,unlock:()=>state.energy>=STAGE_UNLOCK.whitehole,type:'auto'},
-  {id:'prestige1',stage:'whitehole',name:'维度突破',desc:'坍缩精华 ×1.5',baseCost:8e6,cMult:1.30,maxLv:20,
+  {id:'auto3',stage:'whitehole',name:'喷射强度',desc:'自动 +15/s',baseCost:1e6,cMult:1.22,maxLv:35,
+   effect:lv=>lv*15,unlock:()=>state.energy>=STAGE_UNLOCK.whitehole,type:'auto'},
+  {id:'prestige1',stage:'whitehole',name:'维度突破',desc:'坍缩精华 ×1.5',baseCost:5e6,cMult:1.28,maxLv:20,
    effect:lv=>Math.pow(1.5,lv),unlock:()=>state.energy>=STAGE_UNLOCK.whitehole,type:'prestige'},
+  // —— 暗物质 ——
+  {id:'auto4',stage:'darkmatter',name:'暗能汲取',desc:'自动 +100/s',baseCost:5e7,cMult:1.25,maxLv:30,
+   effect:lv=>lv*100,unlock:()=>state.energy>=STAGE_UNLOCK.darkmatter,type:'auto'},
+  {id:'mult3',stage:'darkmatter',name:'引力扭曲',desc:'所有产出 ×1.2',baseCost:2e8,cMult:1.30,maxLv:25,
+   effect:lv=>Math.pow(1.2,lv),unlock:()=>state.energy>=STAGE_UNLOCK.darkmatter,type:'mult'},
+  // —— 脉冲星 ——
+  {id:'auto5',stage:'pulsar',name:'脉冲辐射',desc:'自动 +5000/s',baseCost:5e10,cMult:1.30,maxLv:30,
+   effect:lv=>lv*5000,unlock:()=>state.energy>=STAGE_UNLOCK.pulsar,type:'auto'},
+  {id:'mult4',stage:'pulsar',name:'磁层加速',desc:'所有产出 ×1.25',baseCost:2e11,cMult:1.35,maxLv:25,
+   effect:lv=>Math.pow(1.25,lv),unlock:()=>state.energy>=STAGE_UNLOCK.pulsar,type:'mult'},
+  // —— 终极奇点 ——
+  {id:'auto6',stage:'ultimatesingularity',name:'真空衰变',desc:'自动 +50000/s',baseCost:5e13,cMult:1.35,maxLv:30,
+   effect:lv=>lv*50000,unlock:()=>state.energy>=STAGE_UNLOCK.ultimatesingularity,type:'auto'},
+  {id:'prestige2',stage:'ultimatesingularity',name:'维度超越',desc:'坍缩精华 ×2',baseCost:2e14,cMult:1.40,maxLv:25,
+   effect:lv=>Math.pow(2,lv),unlock:()=>state.energy>=STAGE_UNLOCK.ultimatesingularity,type:'prestige'},
 ];
 
 // ========================================================================
@@ -253,7 +301,7 @@ const UPGRADE_DEFS = [
 // ========================================================================
 let state = {
   energy:0,totalEnergy:0,eps:0,clickPower:1,
-  stageIndex:0, // 0-4
+  stageIndex:0, // 0-7
   prestigeEssence:0,prestigeCount:0,
   upgrades:{}, // {id: level}
   burstCooldown:0,burstReady:false,
@@ -273,7 +321,9 @@ function fmt(n){
   if(n<1e9)return (n/1e6).toFixed(2)+'M';
   if(n<1e12)return (n/1e9).toFixed(2)+'B';
   if(n<1e15)return (n/1e12).toFixed(2)+'T';
-  return (n/1e15).toFixed(2)+'Q';
+  if(n<1e18)return (n/1e15).toFixed(2)+'Q';
+  if(n<1e21)return (n/1e18).toFixed(2)+'Qi';
+  return (n/1e21).toFixed(2)+'Sx';
 }
 function fmtInt(n){
   if(n===0)return'0';
@@ -515,7 +565,7 @@ function update(){
     btn.innerHTML='坍 缩 宇 宙  ·  获 得 <span class="highlight">'+gain+' 奇点精华</span>';
   }else{
     btn.disabled=true;
-    btn.innerHTML='需 到 达 <span class="highlight">白洞</span> 并 积 累 能 量';
+    btn.innerHTML='需 到 达 <span class="highlight">终极奇点</span> 并 积 累 能 量';
   }
   document.getElementById('essence-count').textContent=state.prestigeEssence;
   document.getElementById('next-mult').textContent=(1+state.prestigeEssence*0.5).toFixed(1);
