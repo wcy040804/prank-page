@@ -495,7 +495,12 @@ function buyUpgrade(id){
   const lv=state.upgrades[id];
   if(lv>=def.maxLv)return;
   const cost=getUpgradeCost(def,lv);
-  if(state.energy<cost)return;
+  if(state.energy<cost){
+    // flash red on the card to show can't afford
+    const card=document.querySelector(`.upgrade-card[data-id="${id}"]`);
+    if(card){card.style.borderColor='#FF4444';setTimeout(()=>{if(card)card.style.borderColor=''},200)}
+    return;
+  }
   state.energy-=cost;
   state.upgrades[id]=lv+1;
   update();
@@ -674,7 +679,7 @@ function renderUpgrades(){
       :def.type==='mult'?'×'+(1+state.prestigeEssence*0.5*getEffect(def,lv)).toFixed(2)
       :'';
 
-    html+=`<div class="upgrade-card ${maxed?'maxed':''}" data-id="${def.id}" onclick="buyUpgrade('${def.id}')">
+    html+=`<div class="upgrade-card ${maxed?'maxed':''}" data-id="${def.id}">
       <div class="info">
         <div class="name">${def.name} <span class="level">Lv.${lv}/${def.maxLv}</span></div>
         <div class="desc">${def.desc}</div>
@@ -773,8 +778,17 @@ initState();
 if(!load())initState();
 initStars();
 
-// click events
+// click events — use event delegation for upgrade cards
+document.getElementById('upgrades').addEventListener('click',function(e){
+  const card=e.target.closest('.upgrade-card');
+  if(card && card.dataset.id){
+    e.stopPropagation();
+    buyUpgrade(card.dataset.id);
+  }
+});
 document.getElementById('click-zone').addEventListener('click',function(e){
+  // don't fire if upgrade card was clicked (handled above)
+  if(e.target.closest('.upgrade-card'))return;
   const key=STAGE_KEYS[state.stageIndex];
   // supernova+ : burst click
   if(state.stageIndex>=2 && state.burstReady){
