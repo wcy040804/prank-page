@@ -174,6 +174,7 @@ body{
 .upgrade-card .info{flex:1;min-width:0}
 .upgrade-card .name{font-size:14px;color:#e0e0e0;font-weight:400}
 .upgrade-card .desc{font-size:11px;color:#666;margin-top:1px}
+.upgrade-card .eff{font-size:11px;color:#FFD700;margin-top:1px}
 .upgrade-card .level{font-size:11px;color:#7B68EE}
 .upgrade-card .cost{font-size:14px;color:#FFD700;font-weight:300;text-align:right;white-space:nowrap;margin-left:12px}
 .upgrade-card .cost.afford{color:#7B68EE}
@@ -656,6 +657,26 @@ function updateStageDots(){
   });
 }
 
+function _effText(def,lv){
+  if(lv<=0)return '—';
+  const e=getEffect(def,lv);
+  switch(def.type){
+    case'click':return'+'+Math.round(e)+'/点击';
+    case'auto':return'+'+fmt(e)+'/s';
+    case'mult':return'×'+(e).toFixed(2);
+    case'burst':return'×'+(e).toFixed(1);
+    case'cd':{
+      const cd=Math.max(3,15-e);
+      return cd.toFixed(0)+'s 冷却';
+    }
+    case'convert':return'×'+(e).toFixed(2)+' 精华';
+    case'prestige':return'×'+(e).toFixed(2)+' 精华倍率';
+    case'critrate':return (e*100).toFixed(0)+'% 暴击率';
+    case'critdmg':return'×'+(e).toFixed(1)+' 暴击倍率';
+    default:return'';
+  }
+}
+
 let _lastUpgradeSnap='';
 function renderUpgrades(){
   let snap='';
@@ -689,10 +710,17 @@ function renderUpgrades(){
       continue;
     }
 
+    const curEff=_effText(def,lv);
+    const nextEff=maxed?'':_effText(def,lv+1);
+    const effLine=maxed?`<span class="eff">${curEff}</span>`
+      :lv<=0?`<span class="eff">→ ${nextEff}</span>`
+      :`<span class="eff">${curEff} → ${nextEff}</span>`;
+
     html+=`<div class="upgrade-card ${maxed?'maxed':''}" data-id="${def.id}" data-afford="${canAfford?1:0}">
       <div class="info">
         <div class="name">${def.name} <span class="level">Lv.${lv}/${def.maxLv}</span></div>
         <div class="desc">${def.desc}</div>
+        <div class="eff">${effLine}</div>
       </div>
       <div class="cost ${canAfford?'afford':''}">${maxed?'MAX':fmtInt(cost)}</div>
     </div>`;
