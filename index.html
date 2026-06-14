@@ -194,6 +194,9 @@ body{
 #prestige-btn .highlight{color:#FFD700}
 #prestige-info{text-align:center;font-size:11px;color:#555;margin-top:4px}
 #prestige-info .num{color:#FFD700}
+#milestones{display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:4px}
+.ms-dot{padding:1px 5px;border-radius:4px;background:rgba(255,255,255,.05);color:#444;font-size:9px}
+.ms-dot.done{background:rgba(255,215,0,.12);color:#FFD700}
 /* ========== 响应式 ========== */
 @media(min-width:600px){
   #app{max-width:480px;padding:24px 20px}
@@ -244,6 +247,7 @@ body{
       ｜ 下次加成: ×<span id="next-mult">1.0</span>
       ｜ 已坍缩 <span id="collapse-count">0</span> 次
     </div>
+    <div id="milestones"></div>
   </div>
 </div>
 
@@ -304,6 +308,19 @@ const UPGRADE_DEFS = [
    effect:lv=>Math.pow(2,lv),unlock:()=>state.energy>=STAGE_UNLOCK.ultimatesingularity,type:'prestige'},
 ];
 
+const MILESTONES=[
+  {energy:100,desc:'100 能量',click:2},
+  {energy:1e3,desc:'1K 能量',auto:1},
+  {energy:1e4,desc:'10K 能量',mult:1.2},
+  {energy:1e5,desc:'100K 能量',critrate:0.05},
+  {energy:1e6,desc:'1M 能量',clickMult:2},
+  {energy:1e7,desc:'10M 能量',mult:1.3},
+  {energy:1e8,desc:'100M 能量',critdmg:2},
+  {energy:1e9,desc:'1B 能量',prestige:1.5},
+  {energy:1e10,desc:'10B 能量',mult:1.5},
+  {energy:1e11,desc:'100B 能量',critrate:0.1,critdmg:3},
+];
+
 // ========================================================================
 //  🎮  STATE
 // ========================================================================
@@ -314,6 +331,7 @@ let state = {
   upgrades:{}, // {id: level}
   burstCooldown:0,burstReady:false,
   critTimer:0,critAccum:0,
+  milestonesDone:[],
 };
 
 function initState(){
@@ -358,7 +376,7 @@ function getAutoEPS(){
     if(d.type==='auto' && state.upgrades[d.id]>0)
       e+=getEffect(d,state.upgrades[d.id]);
   }
-  return e;
+  return e+getMSBonus().auto;
 }
 function getTotalMult(){
   let m=1;
@@ -368,7 +386,7 @@ function getTotalMult(){
   }
   // essence global multiplier
   m*=1+state.prestigeEssence*0.5;
-  return m;
+  return m*getMSBonus().mult;
 }
 function getClickPower(){
   let p=1;
@@ -376,7 +394,8 @@ function getClickPower(){
     if(d.type==='click' && state.upgrades[d.id]>0)
       p+=getEffect(d,state.upgrades[d.id]);
   }
-  p*=getTotalMult();
+  const b=getMSBonus();
+  p=(p+b.click)*b.clickMult*getTotalMult();
   return p;
 }
 function getBurstMult(){
@@ -386,6 +405,21 @@ function getBurstMult(){
       b=getEffect(d,state.upgrades[d.id]);
   }
   return b;
+}
+function checkMilestones(){
+  for(let i=0;i<MILESTONES.length;i++){
+    if(!state.milestonesDone.includes(i) && state.totalEnergy>=MILESTONES[i].energy){
+      state.milestonesDone.push(i);
+      const el=document.createElement('div');
+      el.className='float-num';
+      el.textContent='🏆 '+MILESTONES[i].desc+'!';
+      el.style.cssText='font-size:36px;color:#fff;text-shadow:0 0 10px #ff0,0 0 20px #f90,0 0 40px #f60;left:50%;top:35%;transform:translateX(-50%);position:fixed;z-index:9999;pointer-events:none';
+      document.body.appendChild(el);
+      setTimeout(()=>el.remove(),2000);
+      _lastUpgradeSnap='';
+      break;
+    }
+  }
 }
 function getBurstCD(){
   let cd=15;
@@ -401,7 +435,22 @@ function getConvertMult(){
     if(d.type==='convert' && state.upgrades[d.id]>0)
       m=getEffect(d,state.upgrades[d.id]);
   }
-  return m;
+  return m*getMSBonus().convert;
+}
+function getMSBonus(){
+  let b={click:0,auto:0,mult:1,clickMult:1,critrate:0,critdmg:0,prestige:1,convert:1};
+  for(const mi of state.milestonesDone){
+    const m=MILESTONES[mi];
+    if(m.click)b.click+=m.click;
+    if(m.auto)b.auto+=m.auto;
+    if(m.mult)b.mult*=m.mult;
+    if(m.clickMult)b.clickMult*=m.clickMult;
+    if(m.critrate)b.critrate+=m.critrate;
+    if(m.critdmg)b.critdmg+=m.critdmg;
+    if(m.prestige)b.prestige*=m.prestige;
+    if(m.convert)b.convert*=m.convert;
+  }
+  return b;
 }
 function getPrestigeMult(){
   let m=1;
@@ -409,7 +458,7 @@ function getPrestigeMult(){
     if(d.type==='prestige' && state.upgrades[d.id]>0)
       m*=getEffect(d,state.upgrades[d.id]);
   }
-  return m;
+  return m*getMSBonus().prestige;
 }
 function getCritChance(){
   let c=0;
@@ -417,7 +466,7 @@ function getCritChance(){
     if(d.type==='critrate' && state.upgrades[d.id]>0)
       c+=getEffect(d,state.upgrades[d.id]);
   }
-  return Math.min(c,0.9);
+  return Math.min(c+getMSBonus().critrate,0.9);
 }
 function getCritDmg(){
   let d=1;
@@ -425,7 +474,7 @@ function getCritDmg(){
     if(u.type==='critdmg' && state.upgrades[u.id]>0)
       d=getEffect(u,state.upgrades[u.id]);
   }
-  return d;
+  return d+getMSBonus().critdmg;
 }
 function getCritEPS(eps){
   const cr=getCritChance();
@@ -576,6 +625,9 @@ function gameLoop(){
     }
   }
 
+  // milestones
+  checkMilestones();
+
   // burst cooldown
   if(!state.burstReady){
     state.burstCooldown=Math.max(0,state.burstCooldown-dt);
@@ -641,6 +693,9 @@ function update(){
   document.getElementById('essence-count').textContent=state.prestigeEssence;
   document.getElementById('next-mult').textContent=(1+state.prestigeEssence*0.5).toFixed(1);
   document.getElementById('collapse-count').textContent=state.prestigeCount;
+  // milestones display
+  let ms='';for(let i=0;i<MILESTONES.length;i++){const d=state.milestonesDone.includes(i);ms+=`<span class="ms-dot ${d?'done':''}">${MILESTONES[i].desc.split(' ')[0]}</span>`}
+  document.getElementById('milestones').innerHTML=ms;
 }
 
 function updateOrb(){
@@ -786,6 +841,7 @@ function save(){
       prestigeEssence:state.prestigeEssence,prestigeCount:state.prestigeCount,
       upgrades:state.upgrades,
       burstCooldown:state.burstCooldown,burstReady:state.burstReady,
+      milestonesDone:state.milestonesDone,
     }));
   }catch(e){}
 }
@@ -802,6 +858,7 @@ function load(){
     if(data.upgrades)Object.assign(state.upgrades,data.upgrades);
     state.burstCooldown=data.burstCooldown||0;
     state.burstReady=data.burstReady||false;
+    if(data.milestonesDone)state.milestonesDone=data.milestonesDone;
     return true;
   }catch(e){return false}
 }
