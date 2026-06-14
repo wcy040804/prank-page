@@ -274,6 +274,11 @@ const UPGRADE_DEFS = [
    effect:lv=>1+lv*0.25,unlock:()=>state.energy>=STAGE_UNLOCK.blackhole,type:'convert'},
   {id:'mult2',stage:'blackhole',name:'事件视界',desc:'所有产出 ×1.15',baseCost:100000,cMult:1.25,maxLv:25,
    effect:lv=>Math.pow(1.15,lv),unlock:()=>state.energy>=STAGE_UNLOCK.blackhole,type:'mult'},
+  // —— 暴击 ——
+  {id:'crit1',stage:'supernova',name:'暴击率',desc:'自动暴击率 +3%',baseCost:20000,cMult:1.22,maxLv:20,
+   effect:lv=>lv*0.03,unlock:()=>state.energy>=STAGE_UNLOCK.supernova,type:'critrate'},
+  {id:'crit2',stage:'blackhole',name:'暴击威力',desc:'暴击倍率 +0.5x',baseCost:100000,cMult:1.28,maxLv:18,
+   effect:lv=>2+lv*0.5,unlock:()=>state.energy>=STAGE_UNLOCK.blackhole,type:'critdmg'},
   // —— 白洞 ——
   {id:'auto3',stage:'whitehole',name:'喷射强度',desc:'自动 +15/s',baseCost:1e6,cMult:1.22,maxLv:35,
    effect:lv=>lv*15,unlock:()=>state.energy>=STAGE_UNLOCK.whitehole,type:'auto'},
@@ -305,6 +310,7 @@ let state = {
   prestigeEssence:0,prestigeCount:0,
   upgrades:{}, // {id: level}
   burstCooldown:0,burstReady:false,
+  critTimer:0,critAccum:0,
 };
 
 function initState(){
@@ -402,6 +408,28 @@ function getPrestigeMult(){
   }
   return m;
 }
+function getCritChance(){
+  let c=0;
+  for(const d of UPGRADE_DEFS){
+    if(d.type==='critrate' && state.upgrades[d.id]>0)
+      c+=getEffect(d,state.upgrades[d.id]);
+  }
+  return Math.min(c,0.9);
+}
+function getCritDmg(){
+  let d=1;
+  for(const u of UPGRADE_DEFS){
+    if(u.type==='critdmg' && state.upgrades[u.id]>0)
+      d=getEffect(u,state.upgrades[u.id]);
+  }
+  return d;
+}
+function getCritEPS(eps){
+  const cr=getCritChance();
+  const cd=getCritDmg();
+  if(cr<=0)return eps;
+  return eps*(1+cr*(cd-1));
+}
 function getCurrentStage(){
   for(let i=STAGE_KEYS.length-1;i>=0;i--){
     if(state.energy>=STAGE_UNLOCK[STAGE_KEYS[i]])return i;
@@ -486,6 +514,7 @@ function doCollapse(){
   state.totalEnergy=0;
   state.burstReady=false;
   state.burstCooldown=0;
+  state.critTimer=0;state.critAccum=0;
   for(const d of UPGRADE_DEFS) state.upgrades[d.id]=0;
   update();
   // flash
@@ -502,10 +531,40 @@ function gameLoop(){
   const dt=Math.min((now-lastTick)/1000,1);
   lastTick=now;
 
-  const eps=getAutoEPS()*getTotalMult();
-  state.energy+=eps*dt;
-  state.totalEnergy+=eps*dt;
-  state.eps=eps;
+  const baseEps=getAutoEPS()*getTotalMult();
+  const cr=getCritChance();
+  const cd=getCritDmg();
+  const effEps=getCritEPS(baseEps);
+  state.energy+=effEps*dt;
+  state.totalEnergy+=effEps*dt;
+  state.eps=effEps;
+
+  // crit tick
+  if(cr>0){
+    state.critAccum+=baseEps*dt;
+    state.critTimer+=dt;
+    if(state.critTimer>=1.5){
+      state.critTimer=0;
+      if(Math.random()<cr){
+        const bonus=state.critAccum*(cd-1);
+        if(bonus>1){
+          state.energy+=bonus;
+          state.totalEnergy+=bonus;
+          const el=document.createElement('div');
+          el.className='float-num';
+          el.textContent='⚡ CRIT! +'+fmtInt(bonus);
+          el.style.fontSize='28px';el.style.color='#FF4500';
+          const orb=document.getElementById('orb');
+          const r=orb.getBoundingClientRect();
+          el.style.left=(r.left+r.width/2-70)+'px';
+          el.style.top=(r.top-30)+'px';
+          document.body.appendChild(el);
+          setTimeout(()=>el.remove(),1200);
+        }
+      }
+      state.critAccum=0;
+    }
+  }
 
   // burst cooldown
   if(!state.burstReady){
@@ -525,8 +584,10 @@ function update(){
   const numEl=document.getElementById('energy-num');
   if(numEl.textContent!=='✦ 坍 缩 ✦')
     numEl.textContent=fmtInt(state.energy);
+  const crPct=(getCritChance()*100).toFixed(0);
+  const cdVal=getCritDmg().toFixed(1);
   document.getElementById('energy-eps').innerHTML=
-    '+'+fmt(state.eps)+' /s  ·  点击 +<span id="click-power">'+fmtInt(getClickPower())+'</span>';
+    '+'+fmt(state.eps)+' /s'+(crPct>0?'  ⚡ '+crPct+'%×'+cdVal:'')+'  ·  点击 +<span id="click-power">'+fmtInt(getClickPower())+'</span>';
 
   // stage update
   const newStage=getCurrentStage();
