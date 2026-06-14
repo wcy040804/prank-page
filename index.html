@@ -496,9 +496,8 @@ function buyUpgrade(id){
   if(lv>=def.maxLv)return;
   const cost=getUpgradeCost(def,lv);
   if(state.energy<cost){
-    // flash red on the card to show can't afford
-    const card=document.querySelector(`.upgrade-card[data-id="${id}"]`);
-    if(card){card.style.borderColor='#FF4444';setTimeout(()=>{if(card)card.style.borderColor=''},200)}
+    const card=document.querySelector('.upgrade-card[data-id="'+id+'"]');
+    if(card){card.style.borderColor='#FF4444';setTimeout(function(){card.style.borderColor=''},200);}
     return;
   }
   state.energy-=cost;
@@ -652,7 +651,18 @@ function updateStageDots(){
   });
 }
 
+let _lastUpgradeSnap='';
 function renderUpgrades(){
+  let snap='';
+  for(const d of UPGRADE_DEFS){
+    const lv=state.upgrades[d.id];
+    const show=d.unlock()&&STAGE_UNLOCK[d.stage]<=state.energy;
+    const cost=show?getUpgradeCost(d,lv):0;
+    snap+=d.id+':'+lv+':'+(show?1:0)+':'+(state.energy>=cost&&lv<d.maxLv&&show?1:0)+';';
+  }
+  if(snap===_lastUpgradeSnap)return;
+  _lastUpgradeSnap=snap;
+
   const container=document.getElementById('upgrades');
   let html='';
   for(const def of UPGRADE_DEFS){
@@ -674,12 +684,7 @@ function renderUpgrades(){
       continue;
     }
 
-    const effText=def.type==='click'?'+'+(lv+1)+'/点击'
-      :def.type==='auto'?'+'+(lv*def.effect(1)/def.effect(1)||'?')
-      :def.type==='mult'?'×'+(1+state.prestigeEssence*0.5*getEffect(def,lv)).toFixed(2)
-      :'';
-
-    html+=`<div class="upgrade-card ${maxed?'maxed':''}" data-id="${def.id}">
+    html+=`<div class="upgrade-card ${maxed?'maxed':''}" data-id="${def.id}" data-afford="${canAfford?1:0}">
       <div class="info">
         <div class="name">${def.name} <span class="level">Lv.${lv}/${def.maxLv}</span></div>
         <div class="desc">${def.desc}</div>
@@ -778,19 +783,18 @@ initState();
 if(!load())initState();
 initStars();
 
-// click events — use event delegation for upgrade cards
-document.getElementById('upgrades').addEventListener('click',function(e){
+// click events — document-level capture phase delegation for upgrade cards
+document.addEventListener('click',function(e){
   const card=e.target.closest('.upgrade-card');
-  if(card && card.dataset.id){
-    e.stopPropagation();
-    buyUpgrade(card.dataset.id);
-  }
-});
+  if(!card)return;
+  const id=card.dataset.id;
+  if(!id)return;
+  e.stopPropagation();e.preventDefault();
+  buyUpgrade(id);
+},{capture:true});
 document.getElementById('click-zone').addEventListener('click',function(e){
-  // don't fire if upgrade card was clicked (handled above)
   if(e.target.closest('.upgrade-card'))return;
   const key=STAGE_KEYS[state.stageIndex];
-  // supernova+ : burst click
   if(state.stageIndex>=2 && state.burstReady){
     doBurst();
   }else{
