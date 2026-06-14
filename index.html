@@ -1,11 +1,691 @@
 <!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>惊喜</title>
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>宇宙起源 — 放置游戏</title>
 <style>
-*{margin:0;padding:0}
-body{background:#000;display:flex;justify-content:center;align-items:center;height:100vh}
-h1{font-size:64px;color:#0f0;text-align:center;animation:blink 1s infinite}
-@keyframes blink{50%{opacity:0}}
-</style></head>
-<body><h1>扫出来是傻逼</h1></body></html>
+/* ========== 重置 & 基础 ========== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden}
+body{
+  background:#000;
+  color:#e0e0e0;
+  font-family:'Segoe UI','PingFang SC','Microsoft YaHei',system-ui,-apple-system,sans-serif;
+  display:flex;justify-content:center;align-items:center;
+  user-select:none;-webkit-user-select:none;
+}
+/* ========== 粒子星空 Canvas ========== */
+#starfield{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
+/* ========== 主容器 ========== */
+#app{
+  position:relative;z-index:1;
+  width:100%;max-width:520px;height:100vh;height:100dvh;
+  display:flex;flex-direction:column;
+  padding:16px;gap:8px;
+}
+/* ========== 头部 ========== */
+#header{text-align:center;padding:4px 0 0;flex-shrink:0}
+#header h1{
+  font-size:20px;font-weight:300;letter-spacing:6px;
+  background:linear-gradient(90deg,#7B68EE,#FFD700);-webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;background-clip:text;
+}
+#header .sub{font-size:11px;color:#555;letter-spacing:2px}
+/* ========== 能量显示 ========== */
+#energy-bar{
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);
+  border-radius:16px;padding:14px 20px;flex-shrink:0;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  text-align:center;position:relative;overflow:hidden;
+}
+#energy-bar .fill{
+  position:absolute;top:0;left:0;height:100%;
+  background:linear-gradient(90deg,rgba(123,104,238,.15),rgba(255,215,0,.08));
+  transition:width .3s ease;border-radius:16px;pointer-events:none;
+}
+#energy-num{
+  font-size:32px;font-weight:300;color:#fff;position:relative;z-index:1;
+  transition:transform .1s;letter-spacing:1px;
+}
+#energy-num.pop{animation:pop .15s ease}
+@keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.12)}100%{transform:scale(1)}}
+#energy-eps{font-size:13px;color:#7B68EE;position:relative;z-index:1;margin-top:2px}
+#energy-eps span{color:#FFD700}
+/* ========== 阶段指示 ========== */
+#stage-bar{
+  display:flex;gap:4px;flex-shrink:0;padding:0 4px;
+  justify-content:center;
+}
+.stage-dot{
+  width:100%;height:4px;border-radius:2px;
+  background:rgba(255,255,255,.08);transition:background .5s;
+}
+.stage-dot.active{background:#7B68EE}
+.stage-dot.done{background:#FFD700}
+/* ========== 点击区 ========== */
+#click-zone{
+  flex:1;min-height:0;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;position:relative;
+}
+#orb{
+  width:min(40vw,200px);height:min(40vw,200px);
+  border-radius:50%;
+  transition:all .8s cubic-bezier(.25,.46,.45,.94);
+  position:relative;
+}
+#orb.singularity{
+  background:radial-gradient(circle at 35% 35%,#fff,#7B68EE 40%,#000 80%);
+  box-shadow:0 0 60px rgba(123,104,238,.4),0 0 120px rgba(123,104,238,.15);
+}
+#orb.star{
+  background:radial-gradient(circle at 35% 35%,#fff,#FFD700 40%,#FF8C00 70%,#000 90%);
+  box-shadow:0 0 80px rgba(255,215,0,.5),0 0 160px rgba(255,215,0,.2);
+}
+#orb.supernova{
+  background:radial-gradient(circle at 35% 35%,#fff,#FF4500 30%,#FFD700 55%,#000 85%);
+  box-shadow:0 0 100px rgba(255,69,0,.5),0 0 200px rgba(255,215,0,.25);
+  animation:pulse-supernova 2s ease-in-out infinite;
+}
+@keyframes pulse-supernova{
+  0%,100%{transform:scale(1);box-shadow:0 0 100px rgba(255,69,0,.5),0 0 200px rgba(255,215,0,.25)}
+  50%{transform:scale(1.05);box-shadow:0 0 140px rgba(255,69,0,.7),0 0 260px rgba(255,215,0,.35)}
+}
+#orb.blackhole{
+  background:radial-gradient(circle at 35% 35%,#555,#111 40%,#000 70%);
+  box-shadow:0 0 30px rgba(123,104,238,.2);
+  border:1px solid rgba(123,104,238,.2);
+}
+#orb.whitehole{
+  background:radial-gradient(circle at 35% 35%,#fff,#E0FFFF 30%,#7B68EE 60%,#000 85%);
+  box-shadow:0 0 100px rgba(255,255,255,.6),0 0 200px rgba(123,104,238,.3);
+  animation:pulse-white 1.5s ease-in-out infinite;
+}
+@keyframes pulse-white{
+  0%,100%{transform:scale(1);box-shadow:0 0 100px rgba(255,255,255,.6),0 0 200px rgba(123,104,238,.3)}
+  50%{transform:scale(1.03);box-shadow:0 0 130px rgba(255,255,255,.8),0 0 250px rgba(123,104,238,.4)}
+}
+#click-zone .label{
+  position:absolute;bottom:12%;left:50%;transform:translateX(-50%);
+  font-size:13px;color:rgba(255,255,255,.3);letter-spacing:3px;
+  pointer-events:none;
+}
+/* 点击浮动数字 */
+.float-num{
+  position:fixed;pointer-events:none;z-index:10;
+  font-size:24px;font-weight:300;color:#FFD700;
+  animation:floatUp 1s ease-out forwards;
+}
+@keyframes floatUp{
+  0%{opacity:1;transform:translateY(0) scale(1)}
+  100%{opacity:0;transform:translateY(-80px) scale(1.3)}
+}
+/* ========== 升级面板 ========== */
+#upgrades{
+  flex-shrink:0;max-height:calc(100vh - 480px);max-height:calc(100dvh - 480px);
+  overflow-y:auto;display:flex;flex-direction:column;gap:6px;
+  padding:2px 0;
+}
+#upgrades::-webkit-scrollbar{width:2px}
+#upgrades::-webkit-scrollbar-thumb{background:rgba(123,104,238,.3);border-radius:1px}
+.upgrade-card{
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);
+  border-radius:12px;padding:10px 14px;cursor:pointer;
+  transition:all .2s;display:flex;justify-content:space-between;
+  align-items:center;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+}
+.upgrade-card:hover{background:rgba(255,255,255,.06);border-color:rgba(123,104,238,.3)}
+.upgrade-card.locked{opacity:.3;cursor:not-allowed}
+.upgrade-card.locked:hover{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.06)}
+.upgrade-card.maxed{opacity:.5;border-color:rgba(255,215,0,.2)}
+.upgrade-card .info{flex:1;min-width:0}
+.upgrade-card .name{font-size:14px;color:#e0e0e0;font-weight:400}
+.upgrade-card .desc{font-size:11px;color:#666;margin-top:1px}
+.upgrade-card .level{font-size:11px;color:#7B68EE}
+.upgrade-card .cost{font-size:14px;color:#FFD700;font-weight:300;text-align:right;white-space:nowrap;margin-left:12px}
+.upgrade-card .cost.afford{color:#7B68EE}
+/* ========== 坍缩面板 ========== */
+#prestige{
+  flex-shrink:0;padding:4px 0;
+}
+#prestige-btn{
+  width:100%;padding:10px;
+  background:linear-gradient(135deg,rgba(123,104,238,.2),rgba(255,215,0,.1));
+  border:1px solid rgba(123,104,238,.3);border-radius:12px;
+  color:#ccc;font-size:13px;cursor:pointer;letter-spacing:2px;
+  transition:all .3s;font-family:inherit;
+}
+#prestige-btn:hover{background:linear-gradient(135deg,rgba(123,104,238,.3),rgba(255,215,0,.15))}
+#prestige-btn:disabled{opacity:.2;cursor:not-allowed}
+#prestige-btn .highlight{color:#FFD700}
+#prestige-info{text-align:center;font-size:11px;color:#555;margin-top:4px}
+#prestige-info .num{color:#FFD700}
+/* ========== 响应式 ========== */
+@media(min-width:600px){
+  #app{max-width:480px;padding:24px 20px}
+  #energy-num{font-size:40px}
+}
+</style>
+</head>
+<body>
+
+<canvas id="starfield"></canvas>
+
+<div id="app">
+  <div id="header">
+    <h1>宇宙起源</h1>
+    <div class="sub">COSMIC ORIGIN</div>
+  </div>
+
+  <div id="energy-bar">
+    <div class="fill" id="energy-fill" style="width:0%"></div>
+    <div id="energy-num">0</div>
+    <div id="energy-eps">+0 /s  ·  点击 +<span id="click-power">1</span></div>
+  </div>
+
+  <div id="stage-bar">
+    <div class="stage-dot active" data-stage="singularity"></div>
+    <div class="stage-dot" data-stage="star"></div>
+    <div class="stage-dot" data-stage="supernova"></div>
+    <div class="stage-dot" data-stage="blackhole"></div>
+    <div class="stage-dot" data-stage="whitehole"></div>
+  </div>
+
+  <div id="click-zone">
+    <div id="orb" class="singularity"></div>
+    <div class="label">✦ 点 击 能 量 ✦</div>
+  </div>
+
+  <div id="upgrades"></div>
+
+  <div id="prestige">
+    <button id="prestige-btn" disabled>
+      坍 缩 宇 宙  ·  获 得 <span class="highlight">奇点精华</span>
+    </button>
+    <div id="prestige-info">
+      精华: <span class="num" id="essence-count">0</span>
+      ｜ 下次加成: ×<span id="next-mult">1.0</span>
+      ｜ 已坍缩 <span id="collapse-count">0</span> 次
+    </div>
+  </div>
+</div>
+
+<script>
+// ========================================================================
+//  🧬  CONFIG
+// ========================================================================
+const STAGE_KEYS = ['singularity','star','supernova','blackhole','whitehole'];
+const STAGE_LABELS = {singularity:'奇点',star:'恒星',supernova:'超新星',blackhole:'黑洞',whitehole:'白洞'};
+const STAGE_UNLOCK = {singularity:0,star:1e3,supernova:1e5,blackhole:5e6,whitehole:1e8};
+const STAGE_CLASS = {singularity:'singularity',star:'star',supernova:'supernova',blackhole:'blackhole',whitehole:'whitehole'};
+
+const UPGRADE_DEFS = [
+  // —— 奇点 ——
+  {id:'click1',stage:'singularity',name:'点击之力',desc:'每次点击 +1 能量',baseCost:10,cMult:1.15,maxLv:25,
+   effect:lv=>lv,unlock:()=>true,type:'click'},
+  {id:'auto1',stage:'singularity',name:'量子波动',desc:'自动 +0.2/s',baseCost:50,cMult:1.20,maxLv:25,
+   effect:lv=>lv*0.2,unlock:()=>true,type:'auto'},
+  // —— 恒星 ——
+  {id:'auto2',stage:'star',name:'聚变效率',desc:'自动 +1/s',baseCost:200,cMult:1.18,maxLv:30,
+   effect:lv=>lv*1,unlock:()=>state.energy>=STAGE_UNLOCK.star,type:'auto'},
+  {id:'mult1',stage:'star',name:'恒星质量',desc:'所有产出 ×1.15',baseCost:800,cMult:1.22,maxLv:20,
+   effect:lv=>Math.pow(1.15,lv),unlock:()=>state.energy>=STAGE_UNLOCK.star,type:'mult'},
+  // —— 超新星 ——
+  {id:'burst1',stage:'supernova',name:'爆发强度',desc:'点击爆发时 ×0.5',baseCost:8000,cMult:1.20,maxLv:30,
+   effect:lv=>1+lv*0.5,unlock:()=>state.energy>=STAGE_UNLOCK.supernova,type:'burst'},
+  {id:'cd1',stage:'supernova',name:'坍缩冷却',desc:'爆发冷却 -1s',baseCost:15000,cMult:1.25,maxLv:20,
+   effect:lv=>lv*1,unlock:()=>state.energy>=STAGE_UNLOCK.supernova,type:'cd'},
+  // —— 黑洞 ——
+  {id:'convert1',stage:'blackhole',name:'吞噬效率',desc:'坍缩时多获 0.2x 精华',baseCost:80000,cMult:1.22,maxLv:25,
+   effect:lv=>1+lv*0.2,unlock:()=>state.energy>=STAGE_UNLOCK.blackhole,type:'convert'},
+  {id:'mult2',stage:'blackhole',name:'事件视界',desc:'所有产出 ×1.2',baseCost:150000,cMult:1.28,maxLv:25,
+   effect:lv=>Math.pow(1.2,lv),unlock:()=>state.energy>=STAGE_UNLOCK.blackhole,type:'mult'},
+  // —— 白洞 ——
+  {id:'auto3',stage:'whitehole',name:'喷射强度',desc:'自动 +10/s',baseCost:2e6,cMult:1.25,maxLv:30,
+   effect:lv=>lv*10,unlock:()=>state.energy>=STAGE_UNLOCK.whitehole,type:'auto'},
+  {id:'prestige1',stage:'whitehole',name:'维度突破',desc:'坍缩精华 ×1.5',baseCost:8e6,cMult:1.30,maxLv:20,
+   effect:lv=>Math.pow(1.5,lv),unlock:()=>state.energy>=STAGE_UNLOCK.whitehole,type:'prestige'},
+];
+
+// ========================================================================
+//  🎮  STATE
+// ========================================================================
+let state = {
+  energy:0,totalEnergy:0,eps:0,clickPower:1,
+  stageIndex:0, // 0-4
+  prestigeEssence:0,prestigeCount:0,
+  upgrades:{}, // {id: level}
+  burstCooldown:0,burstReady:false,
+};
+
+function initState(){
+  for(const d of UPGRADE_DEFS) state.upgrades[d.id]=0;
+}
+
+// ========================================================================
+//  🔢  FORMAT
+// ========================================================================
+function fmt(n){
+  if(n===0)return'0';
+  if(n<1000)return Math.floor(n).toLocaleString();
+  if(n<1e6)return (n/1e3).toFixed(1)+'K';
+  if(n<1e9)return (n/1e6).toFixed(2)+'M';
+  if(n<1e12)return (n/1e9).toFixed(2)+'B';
+  if(n<1e15)return (n/1e12).toFixed(2)+'T';
+  return (n/1e15).toFixed(2)+'Q';
+}
+function fmtInt(n){
+  if(n===0)return'0';
+  if(n<1e4)return Math.floor(n).toLocaleString();
+  if(n<1e6)return (n/1e3).toFixed(1)+'K';
+  if(n<1e9)return (n/1e6).toFixed(2)+'M';
+  if(n<1e12)return (n/1e9).toFixed(2)+'B';
+  return fmt(n);
+}
+
+// ========================================================================
+//  📐  COMPUTED
+// ========================================================================
+function getUpgradeCost(def,level){
+  return Math.floor(def.baseCost*Math.pow(def.cMult,level));
+}
+function getEffect(def,level){
+  return def.effect(level);
+}
+function getAutoEPS(){
+  let e=0;
+  for(const d of UPGRADE_DEFS){
+    if(d.type==='auto' && state.upgrades[d.id]>0)
+      e+=getEffect(d,state.upgrades[d.id]);
+  }
+  return e;
+}
+function getTotalMult(){
+  let m=1;
+  for(const d of UPGRADE_DEFS){
+    if(d.type==='mult' && state.upgrades[d.id]>0)
+      m*=getEffect(d,state.upgrades[d.id]);
+  }
+  // essence global multiplier
+  m*=1+state.prestigeEssence*0.5;
+  return m;
+}
+function getClickPower(){
+  let p=1;
+  for(const d of UPGRADE_DEFS){
+    if(d.type==='click' && state.upgrades[d.id]>0)
+      p+=getEffect(d,state.upgrades[d.id]);
+  }
+  p*=getTotalMult();
+  return p;
+}
+function getBurstMult(){
+  let b=1;
+  for(const d of UPGRADE_DEFS){
+    if(d.type==='burst' && state.upgrades[d.id]>0)
+      b=getEffect(d,state.upgrades[d.id]);
+  }
+  return b;
+}
+function getBurstCD(){
+  let cd=15;
+  for(const d of UPGRADE_DEFS){
+    if(d.type==='cd' && state.upgrades[d.id]>0)
+      cd-=getEffect(d,state.upgrades[d.id]);
+  }
+  return Math.max(3,cd);
+}
+function getConvertMult(){
+  let m=1;
+  for(const d of UPGRADE_DEFS){
+    if(d.type==='convert' && state.upgrades[d.id]>0)
+      m=getEffect(d,state.upgrades[d.id]);
+  }
+  return m;
+}
+function getPrestigeMult(){
+  let m=1;
+  for(const d of UPGRADE_DEFS){
+    if(d.type==='prestige' && state.upgrades[d.id]>0)
+      m*=getEffect(d,state.upgrades[d.id]);
+  }
+  return m;
+}
+function getCurrentStage(){
+  for(let i=STAGE_KEYS.length-1;i>=0;i--){
+    if(state.energy>=STAGE_UNLOCK[STAGE_KEYS[i]])return i;
+  }
+  return 0;
+}
+function nextEssenceMult(){
+  return 1+(state.prestigeEssence+1)*0.5;
+}
+
+// ========================================================================
+//  💥  ACTIONS
+// ========================================================================
+function doClick(e){
+  const cp=getClickPower();
+  state.energy+=cp;
+  state.totalEnergy+=cp;
+  // float number
+  const rect=document.getElementById('orb').getBoundingClientRect();
+  const cx=rect.left+rect.width/2+(Math.random()-0.5)*60;
+  const cy=rect.top+rect.height/2-20;
+  const el=document.createElement('div');
+  el.className='float-num';
+  el.textContent='+'+fmtInt(cp);
+  el.style.left=cx+'px';el.style.top=cy+'px';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),1000);
+  // pop
+  document.getElementById('energy-num').classList.remove('pop');
+  void document.getElementById('energy-num').offsetWidth;
+  document.getElementById('energy-num').classList.add('pop');
+  update();
+}
+
+function doBurst(){
+  if(!state.burstReady)return;
+  const eps=getAutoEPS()*getTotalMult();
+  const bm=getBurstMult();
+  const gain=Math.max(eps*10*bm,10);
+  state.energy+=gain;
+  state.totalEnergy+=gain;
+  state.burstReady=false;
+  state.burstCooldown=getBurstCD();
+  // feedback
+  document.getElementById('orb').style.transform='scale(1.2)';
+  setTimeout(()=>document.getElementById('orb').style.transform='',400);
+  const el=document.createElement('div');
+  el.className='float-num';
+  el.textContent='💥 +'+fmtInt(gain);
+  el.style.fontSize='32px';
+  const orbEl=document.getElementById('orb');
+  const rect=orbEl.getBoundingClientRect();
+  el.style.left=(rect.left+rect.width/2-60)+'px';
+  el.style.top=(rect.top+rect.height/2-20)+'px';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),1200);
+  update();
+}
+
+function buyUpgrade(id){
+  const def=UPGRADE_DEFS.find(d=>d.id===id);
+  if(!def)return;
+  const lv=state.upgrades[id];
+  if(lv>=def.maxLv)return;
+  const cost=getUpgradeCost(def,lv);
+  if(state.energy<cost)return;
+  state.energy-=cost;
+  state.upgrades[id]=lv+1;
+  update();
+}
+
+function doCollapse(){
+  // how much essence would we gain?
+  const eps=getAutoEPS()*getTotalMult();
+  const base=Math.floor(Math.log10(state.totalEnergy+1)/2);
+  const gain=Math.max(1,Math.floor(base*getConvertMult()*getPrestigeMult()));
+  if(gain<1)return;
+  state.prestigeEssence+=gain;
+  state.prestigeCount++;
+  // reset
+  state.energy=0;
+  state.totalEnergy=0;
+  state.burstReady=false;
+  state.burstCooldown=0;
+  for(const d of UPGRADE_DEFS) state.upgrades[d.id]=0;
+  update();
+  // flash
+  document.getElementById('energy-num').textContent='✦ 坍 缩 ✦';
+  setTimeout(()=>update(),800);
+}
+
+// ========================================================================
+//  🔄  GAME LOOP
+// ========================================================================
+let lastTick=Date.now();
+function gameLoop(){
+  const now=Date.now();
+  const dt=Math.min((now-lastTick)/1000,1);
+  lastTick=now;
+
+  const eps=getAutoEPS()*getTotalMult();
+  state.energy+=eps*dt;
+  state.totalEnergy+=eps*dt;
+  state.eps=eps;
+
+  // burst cooldown
+  if(!state.burstReady){
+    state.burstCooldown=Math.max(0,state.burstCooldown-dt);
+    if(state.burstCooldown<=0)state.burstReady=true;
+  }
+
+  update();
+  requestAnimationFrame(gameLoop);
+}
+
+// ========================================================================
+//  🎨  RENDER
+// ========================================================================
+function update(){
+  // energy display
+  const numEl=document.getElementById('energy-num');
+  if(numEl.textContent!=='✦ 坍 缩 ✦')
+    numEl.textContent=fmtInt(state.energy);
+  document.getElementById('energy-eps').innerHTML=
+    '+'+fmt(state.eps)+' /s  ·  点击 +<span id="click-power">'+fmtInt(getClickPower())+'</span>';
+
+  // stage update
+  const newStage=getCurrentStage();
+  if(newStage!==state.stageIndex){
+    state.stageIndex=newStage;
+    updateOrb();
+    updateStageDots();
+  }
+  // progress bar
+  const nextUnlock=STAGE_UNLOCK[STAGE_KEYS[Math.min(STAGE_KEYS.length-1,state.stageIndex+1)]];
+  const curUnlock=STAGE_UNLOCK[STAGE_KEYS[state.stageIndex]];
+  let pct=0;
+  if(nextUnlock && nextUnlock>curUnlock){
+    pct=Math.min(100,(state.energy-curUnlock)/(nextUnlock-curUnlock)*100);
+  }else if(state.stageIndex>=STAGE_KEYS.length-1){
+    pct=100;
+  }
+  document.getElementById('energy-fill').style.width=pct+'%';
+
+  // burst button in orb
+  const orb=document.getElementById('orb');
+  const isSupernova=state.stageIndex>=2;
+  orb.style.cursor=isSupernova?'pointer':'';
+  orb.title=state.burstReady?'💥 点击爆发！':'冷却中...';
+
+  // upgrades
+  renderUpgrades();
+
+  // prestige
+  const eps2=getAutoEPS()*getTotalMult();
+  const baseGain=Math.max(1,Math.floor(Math.log10(state.totalEnergy+1)/2));
+  const gain=Math.floor(baseGain*getConvertMult()*getPrestigeMult());
+  const btn=document.getElementById('prestige-btn');
+  if(gain>=1 && state.stageIndex>=4){
+    btn.disabled=false;
+    btn.innerHTML='坍 缩 宇 宙  ·  获 得 <span class="highlight">'+gain+' 奇点精华</span>';
+  }else{
+    btn.disabled=true;
+    btn.innerHTML='需 到 达 <span class="highlight">白洞</span> 并 积 累 能 量';
+  }
+  document.getElementById('essence-count').textContent=state.prestigeEssence;
+  document.getElementById('next-mult').textContent=(1+state.prestigeEssence*0.5).toFixed(1);
+  document.getElementById('collapse-count').textContent=state.prestigeCount;
+}
+
+function updateOrb(){
+  const orb=document.getElementById('orb');
+  const key=STAGE_KEYS[state.stageIndex];
+  orb.className=STAGE_CLASS[key];
+}
+
+function updateStageDots(){
+  document.querySelectorAll('.stage-dot').forEach(el=>{
+    const idx=STAGE_KEYS.indexOf(el.dataset.stage);
+    el.classList.toggle('active',idx===state.stageIndex);
+    el.classList.toggle('done',idx<state.stageIndex);
+  });
+}
+
+function renderUpgrades(){
+  const container=document.getElementById('upgrades');
+  let html='';
+  for(const def of UPGRADE_DEFS){
+    const lv=state.upgrades[def.id];
+    const maxed=lv>=def.maxLv;
+    const unlocked=def.unlock();
+    const isStageUnlocked=STAGE_UNLOCK[def.stage]<=state.energy;
+    const cost=getUpgradeCost(def,lv);
+    const canAfford=state.energy>=cost && !maxed && unlocked;
+    const show=unlocked && isStageUnlocked;
+
+    if(!show){
+      html+=`<div class="upgrade-card locked">
+        <div class="info">
+          <div class="name">🔒 ${def.name}</div>
+          <div class="desc">${def.desc}</div>
+        </div>
+      </div>`;
+      continue;
+    }
+
+    const effText=def.type==='click'?'+'+(lv+1)+'/点击'
+      :def.type==='auto'?'+'+(lv*def.effect(1)/def.effect(1)||'?')
+      :def.type==='mult'?'×'+(1+state.prestigeEssence*0.5*getEffect(def,lv)).toFixed(2)
+      :'';
+
+    html+=`<div class="upgrade-card ${maxed?'maxed':''}" data-id="${def.id}" onclick="buyUpgrade('${def.id}')">
+      <div class="info">
+        <div class="name">${def.name} <span class="level">Lv.${lv}/${def.maxLv}</span></div>
+        <div class="desc">${def.desc}</div>
+      </div>
+      <div class="cost ${canAfford?'afford':''}">${maxed?'MAX':fmtInt(cost)}</div>
+    </div>`;
+  }
+  container.innerHTML=html;
+}
+
+// ========================================================================
+//  🌟  STARFIELD
+// ========================================================================
+function initStars(){
+  const canvas=document.getElementById('starfield');
+  const ctx=canvas.getContext('2d');
+  let stars=[],W,H;
+
+  function resize(){
+    W=canvas.width=window.innerWidth;
+    H=canvas.height=window.innerHeight;
+  }
+  window.addEventListener('resize',resize);
+  resize();
+
+  const N=200;
+  for(let i=0;i<N;i++){
+    stars.push({
+      x:Math.random()*W,y:Math.random()*H,
+      r:Math.random()*1.5+0.3,
+      a:Math.random()*0.8+0.2,
+      speed:Math.random()*0.3+0.1,
+      phase:Math.random()*Math.PI*2,
+    });
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    const t=Date.now()/1000;
+    for(const s of stars){
+      const flicker=0.5+0.5*Math.sin(t*s.speed+s.phase);
+      ctx.beginPath();
+      ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(255,255,255,${s.a*flicker})`;
+      ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+
+  // twinkle occasional bright star
+  setInterval(()=>{
+    const s=stars[Math.floor(Math.random()*stars.length)];
+    s.a=1;
+    setTimeout(()=>{s.a=Math.random()*0.6+0.2},200);
+  },2000);
+}
+
+// ========================================================================
+//  💾  SAVE / LOAD
+// ========================================================================
+function save(){
+  try{
+    localStorage.setItem('cosmic-origin',JSON.stringify({
+      energy:state.energy,totalEnergy:state.totalEnergy,
+      prestigeEssence:state.prestigeEssence,prestigeCount:state.prestigeCount,
+      upgrades:state.upgrades,
+      burstCooldown:state.burstCooldown,burstReady:state.burstReady,
+    }));
+  }catch(e){}
+}
+
+function load(){
+  try{
+    const raw=localStorage.getItem('cosmic-origin');
+    if(!raw)return false;
+    const data=JSON.parse(raw);
+    state.energy=data.energy||0;
+    state.totalEnergy=data.totalEnergy||0;
+    state.prestigeEssence=data.prestigeEssence||0;
+    state.prestigeCount=data.prestigeCount||0;
+    if(data.upgrades)Object.assign(state.upgrades,data.upgrades);
+    state.burstCooldown=data.burstCooldown||0;
+    state.burstReady=data.burstReady||false;
+    return true;
+  }catch(e){return false}
+}
+
+setInterval(save,5000);
+window.addEventListener('beforeunload',save);
+
+// ========================================================================
+//  🚀  INIT
+// ========================================================================
+initState();
+if(!load())initState();
+initStars();
+
+// click events
+document.getElementById('click-zone').addEventListener('click',function(e){
+  const key=STAGE_KEYS[state.stageIndex];
+  // supernova+ : burst click
+  if(state.stageIndex>=2 && state.burstReady){
+    doBurst();
+  }else{
+    doClick(e);
+  }
+});
+
+// prestige button
+document.getElementById('prestige-btn').addEventListener('click',doCollapse);
+
+update();
+lastTick=Date.now();
+gameLoop();
+
+// keyboard shortcut
+document.addEventListener('keydown',e=>{
+  if(e.code==='Space'){e.preventDefault();document.getElementById('click-zone').click()}
+});
+
+console.log('🌌 宇宙起源 loaded');
+</script>
+</body>
+</html>
